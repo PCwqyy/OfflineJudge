@@ -16,7 +16,7 @@ int ints[30010];
 /********************************************************************************/
 /*									Judge										*/
 /********************************************************************************/
-Log<10000> Jlog("Judge.log",CLEAR_AND_WRITE);
+Log<10000> Jlog("Judge.log",OVERWRITE);
 struct FArg{int n,col;const char* info;int ms;};
 queue<FArg> FillQ;
 bool FQnEmpty=false;
@@ -229,12 +229,13 @@ void DrawRecord(int x,int y,int col,int odd,int ac,int tot)
 		for(int j=y;j<=y+2;j++)
 			ColorPrintf(i,j,col," ");
 	ColorPrintf(x+2,y+1,col,"R%d",odd);
-	ColorPrintf(x+48,y+1,ac==tot?0xa7:0x47," %sccepted ",ac==tot?"A":"Una");
+	ColorPrintf(x+48,y+1,ac==tot?0xa8:0x48," %sccepted ",ac==tot?"A":"Una");
 	ColorPrintf(x+49,y+2,col,"%.0lf %d/%d",100.0*ac/tot,ac,tot);
 	return;
 }
 void ViewPage(int Rodd,int ps,int Rs[][40][2],int *Rn,int *RAC)
 {
+	ConSize(140,35);
 	char fn[100];
 	for(int i=ps;i<=min(ps+6,Rodd);i++)
 	{
@@ -371,15 +372,15 @@ void Record()
 		Sleep(50);
 	}
 }
-const char* Warn="若不想鼠标错位，仅能在终端下运行。";
-const char* Version="23w2b";
+const char* Warn="Record BooooooooooooM!";
+const char* Version="24w1a";
 char Title[100]="Offline Judge";
 int main()
 {
-	cW=10,cH=20,mH=55;
 	freopen("err.log","w",stderr);
 	sprintf(Title,"%s %s",Title,Version);
 	ConTitle("Offline Judge");
+	InitCharSize();
 	ConSize(50,12);
 	APISize(0);
 	SetSelectState(true);

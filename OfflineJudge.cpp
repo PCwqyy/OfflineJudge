@@ -7,8 +7,8 @@
 #include<conio.h>
 #include<pthread.h>
 #include<windows.h>
-#include"./../PCLib/Console.hpp"
-#include"./../PCLib/Log.hpp"
+#include"lib/PCLib/Console.hpp"
+#include"lib/PCLib/Log.hpp"
 using std::queue;
 int min(int a,int b){return a<b?a:b;}
 int max(int a,int b){return a>b?a:b;}
@@ -115,7 +115,6 @@ void* Judger(void *arg)//judge one point inside this
 	Left--;
 	return NULL;
 }
-pthread_t judge[30010];
 void Judge()//judge once
 {
 	system("cls");
@@ -156,11 +155,11 @@ void Judge()//judge once
 	Rodd=0,Tlimit=1000,AC=0,WA=0,TLE=0,RE=0,UKE=0,Left=N;
 	int ti=0;
 	do	sprintf(fn,".\\Judge\\ans%d.txt",ti++);
-	while(DeleteFile(fn));ti=0;
+	while(DeleteFileA(fn));ti=0;
 	do	sprintf(fn,".\\Judge\\data%d.txt",ti++);
-	while(DeleteFile(fn));ti=0;
+	while(DeleteFileA(fn));ti=0;
 	do	sprintf(fn,".\\Judge\\out%d.txt",ti++);
-	while(DeleteFile(fn));
+	while(DeleteFileA(fn));
 	/*read and write the odd of the judge*/
 /**/Jlog.lprintf("Debug","Read and write the odd of the judge");
 	FILE* Rcdr=fopen(".\\Record\\odd.rcd","r");
@@ -205,7 +204,7 @@ void Judge()//judge once
 	// 	sprintf(fn,".\\Wrong\\TLE%d.txt",i),DeleteFile(fn);
 	// for(int i=RE+1;i<=N;i++)
 	// 	sprintf(fn,".\\Wrong\\RE%d.txt",i),DeleteFile(fn);
-	APIgotoxy(0,35);
+	CursorGoto(0,35);
 	system("pause >>sys.log");
 	return;
 }
@@ -221,7 +220,7 @@ void DrawButton(int x,int y,int col,char* Text)
 	ColorPrintf(x+(9-l)/2+1,y,col,Text);
 	return;
 }
-bool InButton(int x,int y,POINT M){return x<=M.x&&M.x<=x+9&&M.y==y;}
+bool InButton(int x,int y,COORD M){return x<=M.X&&M.X<=x+9&&M.Y==y;}
 void DrawRecord(int x,int y,int col,int odd,int ac,int tot)
 {
 	if(col==0x5f)	col=(GrCol(ac,tot)<<4)+0x7;
@@ -250,8 +249,8 @@ void ViewPage(int Rodd,int ps,int Rs[][40][2],int *Rn,int *RAC)
 		fclose(This);
 	}
 }
-bool InRecord(int x,int y,POINT M)
-{return x<=M.x&&M.x<=x+60&&y<=M.y&&M.y<=y+2;}
+bool InRecord(int x,int y,COORD M)
+{return x<=M.X&&M.X<=x+60&&y<=M.Y&&M.Y<=y+2;}
 void ViewRecord(int Rs[][2],int N)
 {
 	system("cls");
@@ -262,7 +261,7 @@ void ViewRecord(int Rs[][2],int N)
 		if(Rs[i][0]==3)	FillColor(i,0x4f,"WA",(double)Rs[i][1]);
 		if(Rs[i][0]==4)	FillColor(i,0xaf,"AC",(double)Rs[i][1]);
 	}
-	POINT Mouse;
+	COORD Mouse;
 	DrawButton(1,1,0x3f,"<Back");
 	while(true)
 	{
@@ -272,7 +271,7 @@ void ViewRecord(int Rs[][2],int N)
 			DrawButton(1,1,0xaf,"< Back");
 			if(KeyDown(VK_LBUTTON))	{system("cls");return;}
 		}else DrawButton(1,1,0x3f,"<Back");
-		APIgotoxy(0,0);
+		CursorGoto(0,0);
 		Sleep(50);
 	}
 }
@@ -289,10 +288,10 @@ void DrawScrollBar(int x,int y,int h,int col,int barh,int bary)
 		else ColorPrintf(x,i,0x8f,"  ");
 	return;
 }
-bool InBar(int x,int y,int barh,int bary,POINT M)
-{return (M.x==x||M.x==x+1)&&y+bary<=M.y&&M.y<y+bary+barh;}
-bool InScroll(int x,int y,POINT M)
-{return (M.x==x||M.x==x+1)&&y<=M.y&&M.y<y+26;}
+bool InBar(int x,int y,int barh,int bary,COORD M)
+{return (M.X==x||M.X==x+1)&&y+bary<=M.Y&&M.Y<y+bary+barh;}
+bool InScroll(int x,int y,COORD M)
+{return (M.X==x||M.X==x+1)&&y<=M.Y&&M.Y<y+26;}
 void Record()
 {
 	SetSelectState(true);
@@ -306,7 +305,7 @@ void Record()
 		fprintf(Rcdr,"0"),
 		fclose(Rcdr),Rcdr=fopen(".\\Record\\odd.rcd","r");
 	fscanf(Rcdr,"%d",&Rodd),fclose(Rcdr);
-	POINT Mouse,LMouse;
+	COORD Mouse,LMouse;
 	bool Click=true,LClick=true;
 	DrawButton(1,1,0x3f,"<Back");
 	if(Rodd==0)
@@ -342,19 +341,19 @@ void Record()
 		if(!InBar(64,3,barh,bary,Mouse)&&InBar(63,3,barh,bary,LMouse))
 			DrawBar(64,3,0x7f,barh,bary);
 		if(InBar(64,3,barh,bary,Mouse)&&!Drag&&Click)
-			Drag=true,cy=Mouse.y-bary-4;
+			Drag=true,cy=Mouse.Y-bary-4;
 		if(!Click)	Drag=false;
 		else DrawBar(64,3,0x7f,barh,bary);
 		if(Drag)
-			bary=min(26-barh+1,max(0,Mouse.y-cy-4)),
+			bary=min(26-barh+1,max(0,Mouse.Y-cy-4)),
 			ps=min(ceil(1.0*bary/(26/Rodd))+1,Rodd-6),
 			DrawScrollBar(64,3,26,0xff,barh,bary),
 			ViewPage(Rodd,ps,Rs,Rn,RAC);
-		if(!LClick&&Click&&InScroll(64,3,Mouse)&&Mouse.y<bary)
+		if(!LClick&&Click&&InScroll(64,3,Mouse)&&Mouse.Y<bary)
 			ps-=3,ps=max(ps,1),bary=26.0*(ps-1)/Rodd,
 			DrawScrollBar(64,3,26,0x7f,barh,bary),
 			ViewPage(Rodd,ps,Rs,Rn,RAC);
-		if(!LClick&&Click&&InScroll(64,3,Mouse)&&Mouse.y>3+bary+barh)
+		if(!LClick&&Click&&InScroll(64,3,Mouse)&&Mouse.Y>3+bary+barh)
 			ps+=3,ps=min(ps,Rodd-6),bary=26.0*(ps-1)/Rodd,
 			DrawScrollBar(64,3,26,0x7f,barh,bary),
 			ViewPage(Rodd,ps,Rs,Rn,RAC);
@@ -382,13 +381,13 @@ int main()
 	ConTitle("Offline Judge");
 	InitCharSize();
 	ConSize(50,12);
-	APISize(0);
+	CursorSize(0);
 	SetSelectState(true);
 	ColorPrintf(16,1,0x07,"Offline Judge");
 	ColorPrintf(0,10,0x07,"Version:%s",Version);
 	ColorPrintf(0,9,0x04,Warn);
 	pthread_create(&qfcflush,NULL,QFCFlusher,NULL);
-	POINT Mouse;
+	COORD Mouse;
 	for(int i=0;i<30000;i++)
 		ints[i]=i;
 	while(true)

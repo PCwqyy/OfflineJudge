@@ -18,25 +18,32 @@ char* ConsoleTitle="UnTitled Window";
 Log<1000> ConLog("Console.log",OVERWRITE);
 #endif
 
-mutex lkOutput;
+mutex lkOutput,lkOutputOpt;
 
 void CursorGoto(COORD Pos)
 {
+	lkOutputOpt.lock();
 	SetConsoleCursorPosition(hOut,Pos);
+	lkOutputOpt.unlock();
 	return;
 }
 void CursorGoto(short x,short y)
 {
+	lkOutputOpt.lock();
 	SetConsoleCursorPosition(hOut,(COORD){x,y});
+	lkOutputOpt.unlock();
 	return;
 }
 void SetColorIO(short col)
 {
+	lkOutputOpt.lock();
 	SetConsoleTextAttribute(hOut,col);
+	lkOutputOpt.unlock();
 	return;
 }
 void SetColorIOEx(int fore,int back)
 {
+	lkOutputOpt.lock();
 	if(back!=-1)
 		printf("\033[48;2;%d;%d;%dm",
 			(back&0xff0000)>>16,
@@ -47,6 +54,7 @@ void SetColorIOEx(int fore,int back)
 			(fore&0xff0000)>>16,
 			(fore&0x00ff00)>>8,
 			(fore&0x0000ff));
+	lkOutputOpt.unlock();
 	return;
 }
 COORD GetCursorxy()

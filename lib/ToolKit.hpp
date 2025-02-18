@@ -2,9 +2,12 @@
 
 #include"../lib/PClib/Console.hpp"
 #include"../lib/PClib/Log.hpp"
-#include<vector>
 #include<cstdlib>
+#include<vector>
+#include<cmath>
 using std::vector;
+using std::max;
+using std::min;
 
 Log<100> LogOut("..\\log\\log.log",OVERWRITE);
 
@@ -12,7 +15,6 @@ char prBuffer[2000];
 
 #undef RGB
 #define RGB(r,g,b) ((b)|((g)<<8)|((r)<<16))
-
 int HighContrust(int col,int index=1)
 {
 	int R=(col&0xff0000)>>16;
@@ -50,6 +52,7 @@ void Fill(int col,int sx,int sy,int ex,int ey)
 		CursorGoto(sx,i);
 		printf("%s",prBuffer);
 	}
+	SetColorIO(ConDefaultColor);
 	lkOutput.unlock();
 	return;
 }
@@ -109,7 +112,6 @@ struct Button
 vector<Button> ButList;
 int SelectBut=-1;
 void ClearButList(){ButList.clear();return;}
-
 void PushButList(){return;}
 template<typename ...Tps>
 void PushButList(Button Th,Tps... args)
@@ -130,7 +132,7 @@ void RunButs()
 	if(KeyDown(VK_TAB))
 	{
 		if(SelectBut!=-1)
-			ButList[SelectBut].Print(0);
+		ButList[SelectBut].Print(0);
 		SelectBut++,SelectBut%=ButList.size();
 		ButList[SelectBut].Print(1);
 	}
@@ -140,6 +142,50 @@ void RunButs()
 		ClearScreen(),
 		InitButs();
 }
+
+#define BAR_STYLE_PERCENT 0
+#define BAR_STYLE_VALUE 1
+struct Bar
+{
+	int x,y,len,fore,back,*var,maxv,style;
+	Bar(int X,int Y,int Len,int Fore,int Back,int* Var,int Maxv,int Style=BAR_STYLE_PERCENT)
+		{x=X,y=Y,len=Len,fore=Fore,back=Back,var=Var,maxv=Maxv,style=Style;}
+	void Print(bool update=true)
+	{
+		if(!update)	Fill(back,x,y,x+len,y+1);
+		double percent=max(1.0*(*var)/maxv,0.0);
+		Fill(fore,x,y,x+(int)floor(percent*len),y+1);
+		if(style==BAR_STYLE_PERCENT)
+			ColorPosPrintfEx(fore,-1,x+len+1,y,"%d%%",(int)floor(percent*100));
+		else if(style==BAR_STYLE_VALUE)
+			ColorPosPrintfEx(fore,-1,x+len+1,y,"%d/%d",*var,maxv);
+		return;
+	}
+};
+vector<Bar> BarList;
+void ClearBarList(){BarList.clear();return;}
+void PushBarList(){return;}
+template<typename ...Tps>
+void PushBarList(Bar Th,Tps... args)
+{
+	BarList.push_back(Th);
+	PushBarList(args...);
+	return;
+}
+void InitBars()
+{
+	for(auto i:BarList)
+		i.Print(false);
+	return;
+}
+void RunBars()
+{
+	for(auto i:BarList)
+		i.Print();
+	return;
+}
+
+
 /** @param cnt 次序
   * @param retcnt 每行个数
   * @param mar 左留白

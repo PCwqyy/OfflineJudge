@@ -8,11 +8,13 @@
 #include<wchar.h>
 using std::mutex;
 
+#define pcCS_MAX_WINDOW_NAME 500
+
 const HANDLE hOut=GetStdHandle(STD_OUTPUT_HANDLE);
 const HANDLE hIn=GetStdHandle(STD_INPUT_HANDLE);
 
 short ConDefaultColor=0x07;
-char* ConsoleTitle="UnTitled Window";
+char ConsoleTitle[pcCS_MAX_WINDOW_NAME]="UnTitled Window";
 
 #ifdef PCL_LOG
 Log<1000> ConLog("Console.log",OVERWRITE);
@@ -143,10 +145,9 @@ void ColorPosPrintfEx(int fore,int back,short x,short y,const char* format,types
 	return;
 }
 
-\
-void ConTitleA(char *Title)
+void ConTitleA(const char *Title)
 {
-	ConsoleTitle=Title;
+	strcpy(ConsoleTitle,Title);
 	SetConsoleTitleA(Title);
 	Sleep(40);
 	return;
@@ -241,7 +242,7 @@ void SetSelectState(bool ban)
 
 #define CP_GBK 936
 #define CP_US 437
-void ConSetFontSize(int w,int h)
+void ConSetFontSize(short w,short h)
 {
 	CONSOLE_FONT_INFOEX fontInfo;
 	fontInfo.cbSize=sizeof(fontInfo);

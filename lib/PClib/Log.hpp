@@ -50,7 +50,7 @@ class Log
 		}
 		~Log(){fclose(Lout);}
 		template<typename...types>
-		void lprintf(char* LogType,char* format,types... args)
+		void lprintf(const char* LogType,const char* format,types... args)
 		{
 			sprintf(LogOut,format,args...);
 			TimeLoc();

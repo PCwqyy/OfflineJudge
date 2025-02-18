@@ -1,11 +1,12 @@
 #include"./PClib/Log.hpp"
 #include"./PClib/Console.hpp"
 #include"ToolKit.hpp"
-#include<pthread.h>
+#include<thread>
 #include<algorithm>
 #include<cstdlib>
 #include<ctime>
 using std::min;
+using std::thread;
 
 #define MAX_TEST_CNT 50000
 
@@ -13,7 +14,6 @@ int LimitTime=1000,MercyTime=200;
 int JudgeCnt=10,StartT,EndT;
 int RetData,RetStd,RetMine;
 int Result[MAX_TEST_CNT],TimeUse[MAX_TEST_CNT];
-pthread_t ptKill;
 
 #define MineEXERaw "mine.exe"
 #define MineEXE "..\\Code\\mine.exe"
@@ -24,13 +24,27 @@ pthread_t ptKill;
 #define OutTXT "..\\Judge\\Out\\out%d.txt"
 #define WATXT  "..\\Judge\\Wrong\\wrong%d.txt"
 
-#define KILLERCMD "taskkill -f -im \"" MineEXERaw "\" 1>nul 2>nul"
-#define FCCMD "fc " AnsTXT " " OutTXT " 1>nul 2>nul"
-void* Killer(void* arg)
+#define KILLERCMD "taskkill /f /im \"" MineEXERaw "\" >nul"
+#define FCCMD "fc " AnsTXT " " OutTXT " >nul"
+
+mutex lkCheck;
+bool ThisFinish=false;
+void Killer()
 {
-	Sleep(LimitTime+MercyTime);
+	int timenow=clock();
+	while(clock()-timenow<LimitTime+MercyTime)
+	{
+		lkCheck.lock();
+		if(ThisFinish==true)
+		{
+			lkCheck.unlock();
+			return;
+		}
+		lkCheck.unlock();
+		Sleep(10);
+	}
 	systemf(KILLERCMD);
-	return NULL;
+	return;
 }
 
 void SetResult(int i,int RS)
@@ -64,6 +78,13 @@ void SetInfo(int i,int IF)
 			RectCulcX(i,ResPerRow,1,0,ResBoxWid),
 			RectCulcY(i,ResPerRow,4,0,ResBoxHei),
 			IF,true);
+	return;
+}
+void ViewResult()
+{
+	ClearScreen();
+	for(int i=0;i<JudgeCnt;i++)
+		SetResult(i,Result[i]);
 	return;
 }
 
@@ -102,15 +123,19 @@ void Judge()
 		SetInfo(i,IF_ANS);
 		RetStd=systemf(StdEXE " <" DataTXT " >" AnsTXT,i,i);
 		/*Judge*/
+		ThisFinish=false;
 		SetInfo(i,IF_JUDGE);
-		pthread_create(&ptKill,NULL,Killer,NULL);
+		thread ptKill(Killer);
 		StartT=clock();
 		RetMine=systemf(MineEXE " <" DataTXT " >" OutTXT,i,i);
 		EndT=clock();
-		pthread_kill(ptKill,SIGTERM);
+		lkCheck.lock();
+		ThisFinish=true;
+		lkCheck.unlock();
+		ptKill.join();
+		/*Result*/
 		TimeUse[i]=EndT-StartT;
 		TimeUse[i]=min(TimeUse[i],LimitTime+MercyTime);
-		/*Result*/
 		if(RetData!=0||RetStd!=0)
 			SetResult(i,RS_UKE),
 			LogOut.lprintf("Error","data.exe ret%#x, std.exe ret %#x.",RetData,RetStd);

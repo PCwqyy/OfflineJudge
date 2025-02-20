@@ -1,30 +1,17 @@
 #pragma once
 
-#include"../lib/PClib/Console.hpp"
-#include"../lib/PClib/Log.hpp"
+#include"./PClib/Color.hpp"
+#include"./PClib/Console.hpp"
+#include"./PClib/Log.hpp"
 #include<cstdlib>
 #include<vector>
 #include<cmath>
+#include<psapi.h>
 using std::vector;
 using std::max;
 using std::min;
 
 Log<100> LogOut("..\\log\\log.log",OVERWRITE);
-
-char prBuffer[2000];
-
-#undef RGB
-#define RGB(r,g,b) ((b)|((g)<<8)|((r)<<16))
-int HighContrust(int col,int index=1)
-{
-	int R=(col&0xff0000)>>16;
-	int G=(col&0x00ff00)>>8;
-	int B=(col&0x0000ff);
-	R*=index,R+=0xff,R/=(index+1);
-	G*=index,G+=0xff,G/=(index+1);
-	B*=index,B+=0xff,B/=(index+1);
-	return RGB(R,G,B);
-}
 
 char CommandTmp[400];
 template<typename... Tps>
@@ -33,13 +20,26 @@ int systemf(const char* format,Tps... args)
 	sprintf(CommandTmp,format,args...);
 	return system(CommandTmp);
 }
-
+template<typename... args>
+int DeleteFileAf(const char* Path,args... arg)
+{
+	char PathNow[1000];
+	sprintf(PathNow,Path,arg...);
+	return DeleteFileA(PathNow);
+}
+void ClearDirectory(const char* Path)
+{
+	systemf("del /f /s /q %s\\* >nul",Path);
+	return;
+}
 void ClearScreen()
 {
 	systemf("cls");
 	return;
 }
-void Fill(int col,int sx,int sy,int ex,int ey)
+
+char prBuffer[2000];
+void Fill(Color col,int sx,int sy,int ex,int ey)
 {
 	lkOutput.lock();
 	for(int i=sx;i<ex;i++)
@@ -47,7 +47,6 @@ void Fill(int col,int sx,int sy,int ex,int ey)
 	prBuffer[ex-sx]='\0';
 	for(int i=sy;i<ey;i++)
 	{
-		CursorGoto(50,0);
 		SetColorIOEx(-1,col);
 		CursorGoto(sx,i);
 		printf("%s",prBuffer);
@@ -67,7 +66,7 @@ void PrintfCenter(int sx,int ex,int y,const char* format,Tps... args)
 	return;
 }
 template<typename... Tps>
-void ColPrintfCenter(int fore,int back,int sx,int ex,int y,const char* format,Tps... args)
+void ColPrintfCenter(Color fore,Color back,int sx,int ex,int y,const char* format,Tps... args)
 {
 	Fill(back,sx,y,ex,y+1);
 	lkOutput.lock();
@@ -78,7 +77,7 @@ void ColPrintfCenter(int fore,int back,int sx,int ex,int y,const char* format,Tp
 	return;
 }
 template<typename... Tps>
-void ColPrintfCenterNoFill(int fore,int back,int sx,int ex,int y,const char* format,Tps... args)
+void ColPrintfCenterNoFill(Color fore,Color back,int sx,int ex,int y,const char* format,Tps... args)
 {
 	lkOutput.lock();
 	sprintf(prBuffer,format,args...);
@@ -91,16 +90,17 @@ void ColPrintfCenterNoFill(int fore,int back,int sx,int ex,int y,const char* for
 #define MAXLEN 50
 struct Button
 {
-	int x,y,len,fore,back;
+	int x,y,len;
+	Color fore,back;
 	char Text[MAXLEN];
 	void (*Func)();
-	Button(int X,int Y,int Len,int Fore,int Back,const char* text,void (*func)())
+	Button(int X,int Y,int Len,Color Fore,Color Back,const char* text,void (*func)())
 	{
 		x=X,y=Y,len=Len,fore=Fore,back=Back;
 		strcpy(Text,text);
 		Func=func;
 	}
-	void Print(int index)
+	void Print(double index)
 	{
 		ColPrintfCenter(
 			index?HighContrust(fore,index):fore,
@@ -127,29 +127,32 @@ void InitButs()
 	SelectBut=-1;
 	return;
 }
-void RunButs()
+void RunButs(void (*CallBack)()=[](){})
 {
 	if(KeyDown(VK_TAB))
 	{
 		if(SelectBut!=-1)
 		ButList[SelectBut].Print(0);
 		SelectBut++,SelectBut%=ButList.size();
-		ButList[SelectBut].Print(1);
+		ButList[SelectBut].Print(0.5);
 	}
 	if(SelectBut==-1)	return;
 	if(KeyDown(VK_RETURN))
 		ButList[SelectBut].Func(),
 		ClearScreen(),
-		InitButs();
+		InitButs(),
+		CallBack();
+	return;
 }
 
 #define BAR_STYLE_PERCENT 0
 #define BAR_STYLE_VALUE 1
 struct Bar
 {
-	int x,y,len,fore,back,*var,maxv,style;
-	Bar(int X,int Y,int Len,int Fore,int Back,int* Var,int Maxv,int Style=BAR_STYLE_PERCENT)
-		{x=X,y=Y,len=Len,fore=Fore,back=Back,var=Var,maxv=Maxv,style=Style;}
+	int x,y,len,*var,maxv,style;
+	Color fore,back;
+	Bar(int X,int Y,int Len,Color Fore,Color Back,int* Var,int Maxv,int Style=BAR_STYLE_PERCENT):
+		x(X),y(Y),len(Len),fore(Fore),back(Back),var(Var),maxv(Maxv),style(Style){}
 	void Print(bool update=true)
 	{
 		if(!update)	Fill(back,x,y,x+len,y+1);
@@ -192,7 +195,7 @@ void RunBars()
   * @param pad 每个间距
   * @param len 每个宽度
   */ 
-int RectCulcX(int cnt,int retcnt,int mar,int pad,int len)
+int RectCalcX(int cnt,int retcnt,int mar,int pad,int len)
 	{return cnt%retcnt*(len+pad)+mar;}
 /** @param cnt 次序
   * @param retcnt 每行个数
@@ -200,7 +203,7 @@ int RectCulcX(int cnt,int retcnt,int mar,int pad,int len)
   * @param pad 每个间距
   * @param len 每个高度
   */ 
-int RectCulcY(int cnt,int retcnt,int mar,int pad,int len)
+int RectCalcY(int cnt,int retcnt,int mar,int pad,int len)
 	{return cnt/retcnt*(len+pad)+mar;}
 
 #define RS_UKE 0
@@ -249,4 +252,88 @@ void DrawInfoBox(int No,int x,int y,int IF,bool Small)
 	ColorPosPrintfEx(-1,InfoCol[IF],x,y,"#%d",No);
 	ColPrintfCenterNoFill(-1,InfoCol[IF],x,x+ResBoxWid,y+ResBoxHei*0.2,"%s",InfoText[IF]);
 	return;
+}
+
+char FilePathTmp[1000];
+struct FileOp
+{
+	FILE* pointer;
+	FileOp(){}
+	FileOp(const char* Path,const char* Mode)
+		{pointer=fopen(Path,Mode);}
+	~FileOp(){fclose(pointer);}
+	template<typename... Tps>
+	int printf(const char* format,Tps... args)
+	{
+		int ret=fprintf(pointer,format,args...);
+		fflush(pointer);
+		return ret;
+	}
+	template<typename... Tps>
+	int scanf(const char* format,Tps... args)
+	{
+		int ret=fscanf(pointer,format,args...);
+		fflush(pointer);
+		return ret;
+	}
+	char getchar(){return fgetc(pointer);}
+	int putchar(char ch)
+	{
+		int ret=fputc(ch,pointer);
+		fflush(pointer);
+		return ret;
+	}
+	template<typename... Tps>
+	void open(const char* Path,const char* Mode,Tps... args)
+	{
+		fflush(pointer);
+		fclose(pointer);
+		sprintf(FilePathTmp,Path,args...);
+		pointer=fopen(FilePathTmp,Mode);
+		return;
+	}
+	bool Eof(){return feof(pointer);}
+};
+
+PROCESS_INFORMATION CreateProgramProcess
+	(const char* Path,const char* FileIn,const char* FileOut)
+{
+	STARTUPINFO si;
+	si.cb=sizeof(STARTUPINFO);
+	si.dwFlags=STARTF_USESTDHANDLES;
+	// Path char to wchar
+	wchar_t wPath[1000],wIn[1000],wOut[1000];
+	mbstowcs(wPath,Path,strlen(Path)+1);
+	mbstowcs(wIn,FileIn,strlen(FileIn)+1);
+	mbstowcs(wOut,FileOut,strlen(FileOut)+1);
+	// Handle Output
+	SECURITY_ATTRIBUTES saAttrOut={sizeof(SECURITY_ATTRIBUTES),NULL,TRUE},saAttrIn;
+	HANDLE hOutputFile=CreateFileW(wOut,GENERIC_WRITE,FILE_SHARE_READ,&saAttrOut,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,NULL),hInputFile;
+	si.hStdOutput=hOutputFile;
+	si.hStdError=hOutputFile;
+	// Handle Input
+	if(FileIn==NULL)	goto NoInput;
+		saAttrIn={sizeof(SECURITY_ATTRIBUTES),NULL,TRUE};
+		hInputFile=CreateFileW(wIn,GENERIC_READ,FILE_SHARE_READ,&saAttrIn,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,NULL);
+		si.hStdInput=hInputFile;
+	NoInput:
+	// Create Process
+	PROCESS_INFORMATION pi;
+	CreateProcess(wPath,NULL,NULL,NULL,FALSE,CREATE_NO_WINDOW,NULL,NULL,&si,&pi);
+	DWORD pid=pi.dwProcessId;
+	return pi;
+}
+int GetProgramReturn(PROCESS_INFORMATION pi)
+{
+	DWORD ret;
+	WaitForSingleObject(pi.hProcess,INFINITE);
+	GetExitCodeProcess(pi.hProcess,&ret);
+	return ret;
+}
+/// @return 内存占用 (KB)
+int GetProcessMemory(HANDLE hProcess)
+{
+	PROCESS_MEMORY_COUNTERS pmc;
+	GetProcessMemoryInfo(hProcess,&pmc,sizeof(pmc));
+	return pmc.WorkingSetSize/1024;
 }

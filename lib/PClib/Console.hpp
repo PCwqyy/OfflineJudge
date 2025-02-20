@@ -43,22 +43,6 @@ void SetColorIO(short col)
 	lkOutputOpt.unlock();
 	return;
 }
-void SetColorIOEx(int fore,int back)
-{
-	lkOutputOpt.lock();
-	if(back!=-1)
-		printf("\033[48;2;%d;%d;%dm",
-			(back&0xff0000)>>16,
-			(back&0x00ff00)>>8,
-			(back&0x0000ff));
-	if(fore!=-1)
-		printf("\033[38;2;%d;%d;%dm",
-			(fore&0xff0000)>>16,
-			(fore&0x00ff00)>>8,
-			(fore&0x0000ff));
-	lkOutputOpt.unlock();
-	return;
-}
 COORD GetCursorxy()
 {
 	CONSOLE_SCREEN_BUFFER_INFO a;
@@ -70,7 +54,7 @@ COORD GetCursorxy()
  * @brief
  * Color is a base-16 Num. \n
  * The First Digit is for background. \n
- * The Second is for foregrund. \n
+ * The Second is for foreground. \n
  * @note
  * ```
  * 0=Black
@@ -103,17 +87,6 @@ void ColorPrintf(short col,const char* format,types... args)
 }
 
 template<typename... types>
-void ColorPrintfEx(int fore,int back,const char* format,types... args)
-{
-	lkOutput.lock();
-	SetColorIOEx(fore,back);
-	printf(format,args...);
-	SetColorIO(ConDefaultColor);
-	lkOutput.unlock();
-	return;
-}
-
-template<typename... types>
 void PosPrintf(short x,short y,const char* format,types... args)
 {
 	lkOutput.lock();
@@ -133,8 +106,54 @@ void ColorPosPrintf(short col,short x,short y,const char* format,types... args)
 	lkOutput.unlock();
 	return;
 }
+
+#ifdef UNICODE
+
+#define pcCS_MAX_PRINT_BUFFER 1000
+wchar_t ptwBuffer[pcCS_MAX_PRINT_BUFFER];
 template<typename... types>
-void ColorPosPrintfEx(int fore,int back,short x,short y,const char* format,types... args)
+void printf(const wchar_t* format,types ...args)
+{
+	wsprintfW(ptwBuffer,format,args...);
+	WriteConsoleW(hOut,ptwBuffer,wcslen(ptwBuffer),NULL,NULL);
+	return;
+}
+template<typename... types>
+void PosPrintf(short x,short y,const wchar_t* format,types... args)
+{
+	lkOutput.lock();
+	CursorGoto(x,y);
+	printf(format,args...);
+	lkOutput.unlock();
+	return;
+}
+#endif
+
+#ifdef PCL_COLOR
+void SetColorIOEx(Color fore,Color back)
+{
+	lkOutputOpt.lock();
+	if(!back.DontModify())
+		printf("\033[48;2;%d;%d;%dm",
+			back.R,back.G,back.B);
+	if(!fore.DontModify())
+		printf("\033[38;2;%d;%d;%dm",
+			fore.R,fore.G,fore.B);
+	lkOutputOpt.unlock();
+	return;
+}
+template<typename... types>
+void ColorPrintfEx(Color fore,Color back,const char* format,types... args)
+{
+	lkOutput.lock();
+	SetColorIOEx(fore,back);
+	printf(format,args...);
+	SetColorIO(ConDefaultColor);
+	lkOutput.unlock();
+	return;
+}
+template<typename... types>
+void ColorPosPrintfEx(Color fore,Color back,short x,short y,const char* format,types... args)
 {
 	lkOutput.lock();
 	CursorGoto(x,y);
@@ -144,6 +163,32 @@ void ColorPosPrintfEx(int fore,int back,short x,short y,const char* format,types
 	lkOutput.unlock();
 	return;
 }
+
+#ifdef UNICODE
+template<typename... types>
+void ColorPrintfEx(Color fore,Color back,const wchar_t* format,types... args)
+{
+	lkOutput.lock();
+	SetColorIOEx(fore,back);
+	printf(format,args...);
+	SetColorIO(ConDefaultColor);
+	lkOutput.unlock();
+	return;
+}
+template<typename... types>
+void ColorPosPrintfEx(Color fore,Color back,short x,short y,const wchar_t* format,types... args)
+{
+	lkOutput.lock();
+	CursorGoto(x,y);
+	SetColorIOEx(fore,back);
+	printf(format,args...);
+	SetColorIO(ConDefaultColor);
+	lkOutput.unlock();
+	return;
+}
+#endif
+
+#endif
 
 void ConTitleA(const char *Title)
 {
@@ -249,6 +294,20 @@ void ConSetFontSize(short w,short h)
 	fontInfo.dwFontSize=(COORD){w,h};
 	SetCurrentConsoleFontEx(hOut,FALSE,&fontInfo);
 	return;
+}
+
+#ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
+#define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
+#endif
+bool isWindowsTerminal(){
+	if (hOut==INVALID_HANDLE_VALUE)
+		return false;
+	DWORD mode;
+	if (!GetConsoleMode(hOut,&mode))
+		return false;
+	if (mode & ENABLE_VIRTUAL_TERMINAL_PROCESSING)
+		return true;
+	return false;
 }
 
 #endif

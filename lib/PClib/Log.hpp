@@ -8,8 +8,12 @@ int _UntitleCount=0;
 char LogStartFormat[1010]="New log started in %04d/%02d/%02d %02d:%02d:%02d\n";
 char LogFormat[1010]="[%04d/%02d/%02d %02d:%02d:%02d][%s]%s\n";
 
+#define INSERTWRITE "r+"
 #define OVERWRITE "w+"
 #define ADDWRITE "a+"
+#define READONLY "r"
+#define OVERWRITEONLY "w"
+#define ADDWRITEONLY "a"
 
 template<int maxl>
 class Log
@@ -32,6 +36,7 @@ class Log
 			return;
 		}
 	public:
+		bool LongTime=true;
 		void OpenFile(const char* filename,const char* mode)
 		{
 			fclose(Lout);
@@ -41,11 +46,13 @@ class Log
 			fflush(Lout);
 			return;
 		}
+		Log(){Lout=NULL;}
+		Log(bool l){LongTime=l;}
 		Log(const char* filename,const char* mode)
 		{
 			Lout=fopen(filename,mode);
 			TimeLoc();
-			fprintf(Lout,LogStartFormat,Ye,Mo,Da,Ho,Mi,Se);
+			fprintf(Lout,LogStartFormat,Ye,Mo,Da,Ho,Mi,Se);\
 			fflush(Lout);
 		}
 		~Log(){fclose(Lout);}
@@ -54,7 +61,10 @@ class Log
 		{
 			sprintf(LogOut,format,args...);
 			TimeLoc();
-			fprintf(Lout,LogFormat,Ye,Mo,Da,Ho,Mi,Se,LogType,LogOut);
+			if(LongTime)
+				fprintf(Lout,LogFormat,Ye,Mo,Da,Ho,Mi,Se,LogType,LogOut);
+			else
+				fprintf(Lout,LogFormat,Ho,Mi,Se,LogType,LogOut);
 			fflush(Lout);
 			return;
 		}

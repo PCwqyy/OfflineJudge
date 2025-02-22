@@ -29,21 +29,23 @@ void FirstTimeLaunch()
 	CreateDirectoryA("./Judge/Out/",NULL);
 	CreateDirectoryA("./Code/",NULL);
 	CreateDirectoryA("./log/",NULL);
-	flRecordCount.open("./Record/Global.rcd","w+");
+	flGlobalRecord.open("./Record/Global.rcd","w+");
 	LogOut.OpenFile("./log/log.log","w+");
-	flRecordCount.printf("0");
+	flGlobalRecord.printf("0");
 	return;
 }
 void Init()
 {
-	if(flRecordCount.pointer==NULL)
-		FirstTimeLaunch();
-	ConDefaultColor=0x0f;
-	CursorSize(0);
 	ConTitleA("Offline Judge");
+	ConDefaultColor=0x0f;
+	flGlobalRecord.open("./Record/Global.rcd","r+");
+	if(flGlobalRecord.pointer==NULL)
+		FirstTimeLaunch();
+	CursorSize(0);
 	freopen("./log/err.log","w+",stderr);
-	strcpy(LogFormat,"%04d%02d%02d %02d:%02d:%02d[%s]%s\n");
-	flRecordCount.scanf("%d",&GlobalRecordCnt);
+	strcpy(LogFormat,"%02d:%02d:%02d[%s]%s\n");
+	LogOut.OpenFile("./log/log.log",OVERWRITE);
+	GetGlobalRecord();
 	return;
 }
 
@@ -75,11 +77,16 @@ Button btExit(21,6,10,clWhite,clRed,"Exit",[](){exit(0);});
 
 void WelcomeScreen()
 {
-	ColPrintfCenter(clWhite,-1,10,30,2,"Offline Judge");
-	PushButList(btJudge,btRecord,btTest,btExit);
-	InitButs();
+	void (*BasicGUI)()=[]()
+	{
+		ClearButList();
+		PushButList(btJudge,btRecord,btTest,btExit);
+		ColPrintfCenter(clWhite,-1,10,30,2,"Offline Judge");
+		InitButs();
+	};
+	BasicGUI();
 	while(true)
-		RunButs([](){ColPrintfCenter(clWhite,-1,10,30,2,"Offline Judge");}),
+		RunButs(BasicGUI),
 		Sleep(90);
 }
 int main()

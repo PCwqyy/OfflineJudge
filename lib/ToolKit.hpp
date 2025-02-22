@@ -11,7 +11,7 @@ using std::vector;
 using std::max;
 using std::min;
 
-Log<100> LogOut("..\\log\\log.log",OVERWRITE);
+Log<100> LogOut(false);
 
 char CommandTmp[400];
 template<typename... Tps>
@@ -139,9 +139,8 @@ void RunButs(void (*CallBack)()=[](){})
 	if(SelectBut==-1)	return;
 	if(KeyDown(VK_RETURN))
 		ButList[SelectBut].Func(),
-		ClearScreen(),
-		InitButs(),
-		CallBack();
+		CallBack(),
+		InitButs();
 	return;
 }
 
@@ -188,6 +187,95 @@ void RunBars()
 	return;
 }
 
+struct Selector
+{
+	int x,y,col,row,mx,my,wid,sid,sx,sy;
+	Color (*fore)(int id),(*back)(int id),invalid;
+	void (*func)(int id);
+	bool (*selectable)(int id);
+	char* (*text)(int id);
+	Selector(int X,int Y,Color (*Fore)(int id),Color (*Back)(int id),Color Inv,
+		int Col,int Row,int Mx,int My,int Wid,
+		void (*Func)(int id),bool (*Selectable)(int id),char* (*Text)(int id)):
+		x(X),y(Y),fore(Fore),back(Back),invalid(Inv),
+		col(Col),row(Row),mx(Mx),my(My),wid(Wid),sx(0),sy(0),
+		func(Func),selectable(Selectable),text(Text){};
+	int GetId(int i,int j){return i+j*col;}
+	bool InvalidId(int id){return id<0||id>=row*col;}
+	void PrintOne(int i,int j,bool HighLight=false)
+	{
+		if(InvalidId(GetId(i,j)))	return;
+		ColPrintfCenter(
+			selectable(GetId(i,j))?
+				(HighLight?
+					HighContrust(fore(GetId(i,j))):
+					fore(GetId(i,j))):
+				invalid,
+			HighLight?
+				HighContrust(back(GetId(i,j))):
+				back(GetId(i,j)),
+			x+i*(wid+mx),x+wid+i*(wid+mx),y+j*(1+my),
+			"%s",text(GetId(i,j)));
+		return;
+	}
+	void Print(int hx,int hy)
+	{
+		if(hx!=-2)	goto Update;
+		for(int j=0;j<row;j++)
+			for(int i=0;i<col;i++)
+				PrintOne(i,j);
+		hx=-1,hy=0,sid=-1;
+	Update:
+		hy=min(max(hy,0),row-1);
+		PrintOne(sx,sy);
+		PrintOne(hx,hy,true);
+		sx=hx,sy=hy;
+		sid=sx+sy*col;
+		return;
+	}
+	void Init(){Print(-2,-2);return;}
+	void Run(void (*CallBack)()=[](){})
+	{
+		int tid=sid;
+		if(KeyDown(VK_UP))
+			while(true)
+			{
+				tid-=col;
+				if(InvalidId(tid))	return;
+				if(selectable(tid))	goto PrintSite;
+			}
+		if(KeyDown(VK_DOWN))
+			while(true)
+			{
+				tid+=col;
+				if(InvalidId(tid))	return;
+				if(selectable(tid))	goto PrintSite;
+			}
+		if(KeyDown(VK_LEFT))
+			while(true)
+			{
+				tid--;
+				if(InvalidId(tid))	return;
+				if(selectable(tid))	goto PrintSite;
+			}
+		if(KeyDown(VK_RIGHT))
+			while(true)
+			{
+				tid++;
+				if(InvalidId(tid))	return;
+				if(selectable(tid))	goto PrintSite;
+			}
+		if(KeyDown(VK_RETURN))
+			func(tid),
+			CallBack(),
+			Init();
+		return;
+	PrintSite:
+		Print(tid%col,tid/col);
+		return;
+	}
+};
+
 
 /** @param cnt 次序
   * @param retcnt 每行个数
@@ -211,6 +299,8 @@ int RectCalcY(int cnt,int retcnt,int mar,int pad,int len)
 #define RS_RE 2
 #define RS_WA 3
 #define RS_TLE 4
+#define RS_MLE 5
+#define RS_TOT 6
 #define IF_WAIT 0
 #define IF_DATA 1
 #define IF_ANS 2
@@ -223,8 +313,8 @@ int RectCalcY(int cnt,int retcnt,int mar,int pad,int len)
 #e74c3c
 #052242
 */
-int ResCol[]={0x0e1d69,0x52c41a,0x9d3dcf,0xe74c3c,0x052242};
-const char* ResText[]={"UKE","AC","RE","WA","TLE"};
+int ResCol[]={0x0e1d69,0x52c41a,0x9d3dcf,0xe74c3c,0x052242,0x052242};
+const char* ResText[]={"UKE","AC","RE","WA","TLE","MLE"};
 /*
 #a0a0a0
 #009356
@@ -233,6 +323,14 @@ const char* ResText[]={"UKE","AC","RE","WA","TLE"};
 */
 int InfoCol[]={0xa0a0a0,0x009356,0x00a48e,0x3498db};
 const char* InfoText[]={"Waiting","Dataing","Ansing","Judging"};
+Color ScoreColor(double s)
+{
+	if(s==100)	return ResCol[RS_AC];
+	if(s>=80)	return clLime;
+	if(s>=50)	return clYellow;
+	if(s>=20)	return clOrange;
+	else return clRed;
+}
 
 int ResBoxWid=10,ResBoxHei=5,ResPerRow=10;
 
@@ -262,6 +360,7 @@ struct FileOp
 	FileOp(const char* Path,const char* Mode)
 		{pointer=fopen(Path,Mode);}
 	~FileOp(){fclose(pointer);}
+	bool Eof(){return feof(pointer);}
 	template<typename... Tps>
 	int printf(const char* format,Tps... args)
 	{
@@ -277,6 +376,25 @@ struct FileOp
 		return ret;
 	}
 	char getchar(){return fgetc(pointer);}
+	void getword(char* dest)
+	{
+		while(true)
+		{
+			dest[0]=FileOp::getchar();
+			if(Eof()||dest[0]!=' '||dest[0]=='\n')
+				break;
+		}
+		int i=1;
+		while(true)
+		{
+			dest[i]=FileOp::getchar();
+			if(Eof()||dest[i]==' '||dest[i]=='\n')
+				break;
+			i++;
+		}
+		dest[i]='\0';
+		return;
+	}
 	int putchar(char ch)
 	{
 		int ret=fputc(ch,pointer);
@@ -292,19 +410,32 @@ struct FileOp
 		pointer=fopen(FilePathTmp,Mode);
 		return;
 	}
-	bool Eof(){return feof(pointer);}
+	int CursorMove(int offset)
+		{return fseek(pointer,offset,SEEK_CUR);}
+	int CursorSeek(int x,int origin=SEEK_SET)
+		{return fseek(pointer,x,origin);}
+	long long GetCursorPos()
+	{
+		long long ret;
+		fgetpos(pointer,&ret);
+		return ret;
+	}
+	int SetCursorPos(long long x)
+		{return fsetpos(pointer,&x);}
 };
 
 PROCESS_INFORMATION CreateProgramProcess
-	(const char* Path,const char* FileIn,const char* FileOut)
+(const char* Path,const char* FileIn,const char* FileOut)
 {
 	STARTUPINFO si;
+	ZeroMemory(&si,sizeof(si));
 	si.cb=sizeof(STARTUPINFO);
 	si.dwFlags=STARTF_USESTDHANDLES;
 	// Path char to wchar
 	wchar_t wPath[1000],wIn[1000],wOut[1000];
 	mbstowcs(wPath,Path,strlen(Path)+1);
-	mbstowcs(wIn,FileIn,strlen(FileIn)+1);
+	if(FileIn!=NULL)
+		mbstowcs(wIn,FileIn,strlen(FileIn)+1);
 	mbstowcs(wOut,FileOut,strlen(FileOut)+1);
 	// Handle Output
 	SECURITY_ATTRIBUTES saAttrOut={sizeof(SECURITY_ATTRIBUTES),NULL,TRUE},saAttrIn;
@@ -313,14 +444,22 @@ PROCESS_INFORMATION CreateProgramProcess
 	si.hStdError=hOutputFile;
 	// Handle Input
 	if(FileIn==NULL)	goto NoInput;
-		saAttrIn={sizeof(SECURITY_ATTRIBUTES),NULL,TRUE};
-		hInputFile=CreateFileW(wIn,GENERIC_READ,FILE_SHARE_READ,&saAttrIn,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,NULL);
-		si.hStdInput=hInputFile;
-	NoInput:
+	saAttrIn={sizeof(SECURITY_ATTRIBUTES),NULL,TRUE};
+	hInputFile=CreateFileW(wIn,GENERIC_READ,FILE_SHARE_READ,&saAttrIn,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,NULL);
+	si.hStdInput=hInputFile;
+NoInput:
 	// Create Process
 	PROCESS_INFORMATION pi;
-	CreateProcess(wPath,NULL,NULL,NULL,FALSE,CREATE_NO_WINDOW,NULL,NULL,&si,&pi);
-	DWORD pid=pi.dwProcessId;
+	ZeroMemory(&pi, sizeof(pi));
+	if(!CreateProcess(wPath,NULL,NULL,NULL,TRUE,CREATE_NO_WINDOW,NULL,NULL,&si,&pi))
+	{
+		LogOut.lprintf("Error","run %s fail %#d",Path,GetLastError());
+		pi.hProcess=NULL;
+		return pi;
+	}
+	CloseHandle(hOutputFile);
+	if(FileIn!=NULL)
+		CloseHandle(hInputFile);
 	return pi;
 }
 int GetProgramReturn(PROCESS_INFORMATION pi)
@@ -330,10 +469,28 @@ int GetProgramReturn(PROCESS_INFORMATION pi)
 	GetExitCodeProcess(pi.hProcess,&ret);
 	return ret;
 }
+int RunProgramAndGetReturn(const char* Path,const char* FileIn,const char* FileOut)
+{
+	PROCESS_INFORMATION pro;
+	pro=CreateProgramProcess(Path,FileIn,FileOut);
+	return GetProgramReturn(pro);
+}
+
 /// @return 内存占用 (KB)
 int GetProcessMemory(HANDLE hProcess)
 {
 	PROCESS_MEMORY_COUNTERS pmc;
 	GetProcessMemoryInfo(hProcess,&pmc,sizeof(pmc));
 	return pmc.WorkingSetSize/1024;
+}
+
+void WriteToClipboard(const char* text){
+    OpenClipboard(nullptr);
+    EmptyClipboard();
+    HGLOBAL hMem=GlobalAlloc(GMEM_MOVEABLE,strlen(text) + 1);
+    memcpy(GlobalLock(hMem),text,strlen(text)+1);
+    GlobalUnlock(hMem);
+    SetClipboardData(CF_TEXT,hMem);
+    CloseClipboard();
+	return;
 }

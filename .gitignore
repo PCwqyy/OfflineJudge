@@ -4,6 +4,7 @@
 Record/*
 Code/*
 Judge/*
+.vscode/*
 
 Test.*
 test.*

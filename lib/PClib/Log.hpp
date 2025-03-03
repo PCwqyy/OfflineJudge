@@ -37,7 +37,7 @@ class Log
 		}
 	public:
 		bool LongTime=true;
-		void OpenFile(const char* filename,const char* mode)
+		void open(const char* filename,const char* mode)
 		{
 			fclose(Lout);
 			Lout=fopen(filename,mode);

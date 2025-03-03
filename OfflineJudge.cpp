@@ -30,7 +30,7 @@ void FirstTimeLaunch()
 	CreateDirectoryA("./Code/",NULL);
 	CreateDirectoryA("./log/",NULL);
 	flGlobalRecord.open("./Record/Global.rcd","w+");
-	LogOut.OpenFile("./log/log.log","w+");
+	LogOut.open("./log/log.log","w+");
 	flGlobalRecord.printf("0");
 	return;
 }
@@ -44,7 +44,7 @@ void Init()
 	CursorSize(0);
 	freopen("./log/err.log","w+",stderr);
 	strcpy(LogFormat,"%02d:%02d:%02d[%s]%s\n");
-	LogOut.OpenFile("./log/log.log",OVERWRITE);
+	LogOut.open("./log/log.log",OVERWRITE);
 	GetGlobalRecord();
 	return;
 }

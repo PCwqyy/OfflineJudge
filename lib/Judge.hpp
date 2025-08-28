@@ -3,6 +3,7 @@
 #include"./PClib/Color.hpp"
 #include"./PClib/Log.hpp"
 #include"./PClib/Console.hpp"
+#include"Settings.hpp"
 #include"ToolKit.hpp"
 #include"Record.hpp"
 #include<thread>
@@ -12,27 +13,9 @@
 using std::min;
 using std::thread;
 
-int LimitTime=1000,MercyTime=200;
-int LimitMemory=131072,MercyMemory=20480,MaxMemory;
 bool MLEMark=false;
-int StartT,EndT;
+int StartT,EndT,MaxMemory;
 int RetData,RetStd,RetMine;
-
-#define MineEXE "./Code/mine.exe"
-#define MineCPP "./Code/mine.cpp"
-#define MineEXERaw "mine.exe"
-#define DataEXE "./Code/data.exe"
-#define DataCPP "./Code/data.cpp"
-#define DataEXERaw "data.exe"
-#define StdEXE "./Code/std.exe"
-#define StdCPP "./Code/std.cpp"
-#define StdEXERaw "std.exe"
-#define DataTXT "./Judge/data.txt"
-#define AnsTXT "./Judge/ans.txt"
-#define OutTXT "./Judge/out.txt"
-#define JudgeDIR "./Judge"
-#define KILLERCMD "taskkill /f /im \"%s\" >nul"
-#define FCCMD "fc .\\Judge\\ans.txt .\\Judge\\out.txt >nul"
 
 mutex lkCheck;
 bool ThisFinish=false;
@@ -107,18 +90,32 @@ void SetInfo(int i,int IF)
 
 int JudgeIdNow=0;
 Bar barJudge(2,5,-1,clSkyBlue,clGray,&JudgeIdNow,-1);
-void JInput()
+InputBox ibJudgeCnt("Judge Count:",0,0,-1,5,-1,-1,clSkyBlue,INPUT_TYPE_INT);
+bool JInput()
 {
-	CursorGoto(0,0);
-	printf("Judge Count:");
-intputsite:
-	scanf("%d",&JudgeCnt);
-	while(JudgeCnt<=0||JudgeCnt>MAX_TEST_CNT)
+	ibJudgeCnt.focus=true;
+	ibJudgeCnt.Print();
+	CooldownFormLastCall();
+	ClearGetchQueue();
+	while(true)
 	{
-		ColorPrintfEx(0xff0000,-1,"Invalid Judge Count.\n");
-		goto intputsite;
+		ibJudgeCnt.Run();
+		if(KeyDown(VK_RETURN)&&CooldownFormLastCall())
+		{
+			JudgeCnt=ibJudgeCnt.GetInt();
+			if(JudgeCnt<=0||JudgeCnt>MAX_TEST_CNT)
+				ColorPosPrintfEx(clRed,-1,0,2,"Invalid Judge Count.\n");
+			else break;
+		}
+		if(KeyDown(VK_ESCAPE))
+		{
+			CursorSize(0);
+			return false;
+		}
+		Sleep(50);
 	}
-	return;
+	CursorSize(0);
+	return true;
 }
 void TerminatePrograms()
 {
@@ -128,7 +125,7 @@ void TerminatePrograms()
 }
 bool CompilePrograms()
 {
-	ColorPosPrintfEx(clGold,-1,-1,-1,"Compiling...\n");
+	ColorPosPrintfEx(clGold,-1,0,3,"Compiling...\n");
 	int d=systemf("g++ -xc++ -std=c++14 -s %s -o %s",DataCPP,DataEXE);
 	int s=systemf("g++ -xc++ -std=c++14 -s %s -o %s",StdCPP,StdEXE);
 	int m=systemf("g++ -xc++ -std=c++14 -s %s -o %s",MineCPP,MineEXE);
@@ -279,7 +276,7 @@ void Judge()
 	GlobalRecordPlusPlus();
 	ctAC=ctWA=ctTLE=ctMLE=ctRE=ctUKE=0;
 	flRecord.open(RecordRCD,"w+",GlobalRecordCnt);
-	JInput();
+	if(!JInput())	return;
 	TerminatePrograms();
 	if(!CompilePrograms())
 		goto End;

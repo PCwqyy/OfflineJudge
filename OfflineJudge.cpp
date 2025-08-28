@@ -24,13 +24,14 @@ bool CheckEnvironment()
 void FirstTimeLaunch()
 {
 	CreateDirectoryA("./Record/",NULL);
+	CreateDirectoryA("./Config/",NULL);
 	CreateDirectoryA("./Judge/",NULL);
 	CreateDirectoryA("./Judge/Data/",NULL);
 	CreateDirectoryA("./Judge/Ans/",NULL);
 	CreateDirectoryA("./Judge/Out/",NULL);
 	CreateDirectoryA("./Code/",NULL);
 	CreateDirectoryA("./log/",NULL);
-	flGlobalRecord.open("./Record/Global.rcd","w+");
+	flGlobalRecord.open(GlobalRCD,"w+");
 	LogOut.open("./log/log.log","w+");
 	flGlobalRecord.printf("0");
 	return;
@@ -38,7 +39,7 @@ void FirstTimeLaunch()
 void Init()
 {
 	ConTitleA("Offline Judge");
-	flGlobalRecord.open("./Record/Global.rcd","r+");
+	flGlobalRecord.open(GlobalRCD,"r+");
 	if(flGlobalRecord.pointer==NULL)
 	FirstTimeLaunch();
 	ConDefaultColor=0x0f;
@@ -47,6 +48,7 @@ void Init()
 	strcpy(LogFormat,"%02d:%02d:%02d[%s]%s\n");
 	LogOut.open("./log/log.log",OVERWRITE);
 	GetGlobalRecord();
+	ReadSettings();
 	return;
 }
 
@@ -55,8 +57,11 @@ Bar barTest(2,2,20,clWhite,clGray,&loadingStatus,514,BAR_STYLE_VALUE);
 void TestScreen()
 {
 	ClearScreen();
-	ColPrintfCenter(clWhite,clDodgerBlue,0,15,0,"Test Screen");
+	ColPrintfCenter(clWhite,clViolet,0,15,0,"Test Screen");
 	ColorPosPrintfEx(clGold,-1,2,4,L"Emojis available! 😊🤣👌🐧");
+	ReadSettings();
+	ColorPosPrintfEx(clDeepSkyBlue,-1,2,5,"You are %s.",you);
+	SaveSettings();
 	ClearBarList();
 	PushBarList(barTest);
 	InitBars();
@@ -68,20 +73,23 @@ void TestScreen()
 		Sleep(20);
 	}
 	Sleep(1000);
+	ClearScreen();
 	return;
 }
 
 Button btJudge(9,4,10,clWhite,clDodgerBlue,"Judge",Judge);
 Button btRecord(21,4,10,clWhite,clGold,"Record",RecordScreen);
-Button btTest(9,6,10,clWhite,clForestGreen,"Test",TestScreen);
-Button btExit(21,6,10,clWhite,clRed,"Exit",[](){exit(0);});
+Button btSettings(9,6,10,clWhite,clForestGreen,"Settings",SettingScreen);
+Button btTest(21,6,10,clWhite,clViolet,"Test",TestScreen);
+Button btExit(9,8,10,clWhite,clRed,"Exit",[](){exit(0);});
 
 void WelcomeScreen()
 {
 	void (*BasicGUI)()=[]()
 	{
+		ClearScreen();
 		ClearButList();
-		PushButList(btJudge,btRecord,btTest,btExit);
+		PushButList(btJudge,btRecord,btSettings,btTest,btExit);
 		ColPrintfCenter(clWhite,-1,10,30,2,"Offline Judge");
 		InitButs();
 	};

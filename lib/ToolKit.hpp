@@ -5,7 +5,9 @@
 #include"./PClib/Log.hpp"
 #include<cstdlib>
 #include<vector>
+#include<cctype>
 #include<cmath>
+#include<conio.h>
 #include<psapi.h>
 
 using std::vector;
@@ -88,6 +90,20 @@ void ColPrintfCenterNoFill(Color fore,Color back,int sx,int ex,int y,const char*
 	return;
 }
 
+int HoldCooldownTime=200;
+int LastCallTime=0,ThisCallTime=0;
+bool CooldownFormLastCall(int min=HoldCooldownTime)
+{
+	ThisCallTime=clock();
+	int ret=ThisCallTime-LastCallTime;
+	if(ret>=min)
+	{
+		LastCallTime=ThisCallTime;
+		return true;
+	}
+	return false;
+}
+
 #define MAXLEN 50
 struct Button
 {
@@ -130,7 +146,7 @@ void InitButs()
 }
 void RunButs(void (*CallBack)()=[](){})
 {
-	if(KeyDown(VK_TAB))
+	if(KeyDown(VK_TAB)&&CooldownFormLastCall(HoldCooldownTime))
 	{
 		if(SelectBut!=-1)
 		ButList[SelectBut].Print(0);
@@ -277,6 +293,123 @@ struct Selector
 	}
 };
 
+void ClearGetchQueue()
+{
+	while(kbhit())
+		getch();
+	return;
+}
+
+#define INPUT_TYPE_STRING 0
+#define INPUT_TYPE_INT 1
+bool isCharInString(char c){return isgraph(c)||c==' ';}
+bool isCharInInt(char c){return isdigit(c);}
+struct InputBox
+{
+	int x,y,tagLen,boxLen,cur;
+	Color fore,back,focusCol;
+	char tag[MAXLEN],val[MAXLEN];
+	bool focus;
+	bool (*isValid)(char ch);
+	InputBox(const char* Tag,int X,int Y,int TagLen,int BoxLen,Color Fore,Color Back,
+		Color focusCol,int Type=INPUT_TYPE_STRING,const char* Val="",bool AutoFocus=false):
+		x(X),y(Y),tagLen(TagLen),boxLen(BoxLen),
+		fore(Fore),back(Back),focusCol(focusCol),focus(AutoFocus)
+		{
+			strcpy(tag,Tag);
+			strcpy(val,Val);
+			if(Type==INPUT_TYPE_STRING)
+				isValid=isCharInString;
+			else if(Type==INPUT_TYPE_INT)
+				isValid=isCharInInt;
+			cur=strlen(val);
+			if(TagLen==-1)
+				tagLen=strlen(Tag);
+		}
+	void Print(bool valOnly=false)
+	{
+		CursorSize(0);
+		if(!valOnly)
+			ColorPosPrintfEx(focus?focusCol:fore,-1,x,y,"%s",tag);
+		ColorPosPrintfEx(focus?HighContrust(focusCol):fore,back,x+tagLen,y,"%s ",val);
+		CursorSize(1);
+	}
+	void Run()
+	{
+		if(!focus)	return;
+		CursorGoto(x+tagLen+cur,y);
+		char ch;
+		while(kbhit())
+		{
+			ch=getch();
+			int len=strlen(val);
+			if(isValid(ch)&&len<boxLen)
+			{
+				for(int i=len;i>cur;i--)
+					val[i]=val[i-1];
+				val[cur++]=ch;
+				val[len+1]='\0';
+			}
+			else if(ch=='\b')
+			{
+				for(int i=cur;i<len;i++)
+					val[i-1]=val[i];
+				val[len-1]='\0';
+				cur--;
+			}
+			else if(ch==-32)
+			{
+				ch=getch();
+				if(ch=='K')	cur--;
+				if(ch=='M')	cur++;
+			}
+			cur=min(max(cur,0),(int)strlen(val));
+			Print(true);
+			CursorGoto(x+tagLen+cur,y);
+		}
+	}
+	int GetInt()
+	{
+		int ret;
+		sscanf(val,"%d",&ret);
+		return ret;
+	}
+};
+vector<InputBox> InputBoxList;
+int SelectInput=-1;
+void ClearInputList(){InputBoxList.clear();return;}
+void PushInputList(){return;}
+template<typename ...Tps>
+void PushInputList(InputBox Th,Tps... args)
+{
+	InputBoxList.push_back(Th);
+	PushInputList(args...);
+	return;
+}
+void InitInputs()
+{
+	ClearGetchQueue();
+	for(auto i:InputBoxList)
+		i.Print();
+	CursorSize(0);
+	SelectInput=-1;
+	return;
+}
+void RunInputs()
+{
+	if(KeyDown(VK_TAB)&&CooldownFormLastCall(HoldCooldownTime))
+	{
+		if(SelectInput!=-1)
+			InputBoxList[SelectInput].focus=false,
+			InputBoxList[SelectInput].Print();
+		SelectInput++,SelectInput%=InputBoxList.size(),
+		InputBoxList[SelectInput].focus=true,
+		InputBoxList[SelectInput].Print();
+	}
+	if(SelectInput!=-1)
+		InputBoxList[SelectInput].Run();
+	return;
+}
 
 /** @param cnt 次序
   * @param retcnt 每行个数
@@ -384,7 +517,7 @@ struct FileOp
 		while(true)
 		{
 			dest[0]=FileOp::getchar();
-			if(Eof()||dest[0]!=' '||dest[0]=='\n')
+			if(Eof()||(dest[0]!=' '&&dest[0]!='\n'))
 				break;
 		}
 		int i=1;
@@ -392,6 +525,25 @@ struct FileOp
 		{
 			dest[i]=FileOp::getchar();
 			if(Eof()||dest[i]==' '||dest[i]=='\n')
+				break;
+			i++;
+		}
+		dest[i]='\0';
+		return;
+	}
+	void getline(char* dest)
+	{
+		while(true)
+		{
+			dest[0]=FileOp::getchar();
+			if(Eof()||(dest[0]!=' '&&dest[0]!='\n'))
+				break;
+		}
+		int i=1;
+		while(true)
+		{
+			dest[i]=FileOp::getchar();
+			if(Eof()||dest[i]=='\n')
 				break;
 			i++;
 		}

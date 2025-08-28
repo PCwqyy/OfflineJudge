@@ -306,6 +306,7 @@ int RectCalcY(int cnt,int retcnt,int mar,int pad,int len)
 #define IF_DATA 1
 #define IF_ANS 2
 #define IF_JUDGE 3
+#define IF_CE 4
 
 /*
 #0e1d69
@@ -313,6 +314,7 @@ int RectCalcY(int cnt,int retcnt,int mar,int pad,int len)
 #9d3dcf
 #e74c3c
 #052242
+#fadb14
 */
 int ResCol[]={0x0e1d69,0x52c41a,0x9d3dcf,0xe74c3c,0x052242,0x052242};
 const char* ResText[]={"UKE","AC","RE","WA","TLE","MLE"};
@@ -322,8 +324,8 @@ const char* ResText[]={"UKE","AC","RE","WA","TLE","MLE"};
 #00a48e
 #3498db
 */
-int InfoCol[]={0xa0a0a0,0x009356,0x00a48e,0x3498db};
-const char* InfoText[]={"Waiting","Dataing","Ansing","Judging"};
+int InfoCol[]={0xa0a0a0,0x009356,0x00a48e,0x3498db,0xfadb14};
+const char* InfoText[]={"Waiting","Dataing","Ansing","Judging","CE"};
 Color ScoreColor(double s)
 {
 	if(s==100)	return ResCol[RS_AC];
@@ -335,13 +337,13 @@ Color ScoreColor(double s)
 
 int ResBoxWid=10,ResBoxHei=5,ResPerRow=10;
 
-void DrawResultBox(int No,int x,int y,int RS,int TU,bool Small)
+void DrawResultBox(int No,int x,int y,int RS,const char* det,bool Small)
 {
 	Fill(ResCol[RS],x,y,x+ResBoxWid,y+ResBoxHei);
 	if(Small)	return;
 	ColorPosPrintfEx(-1,ResCol[RS],x,y,"#%d",No);
 	ColPrintfCenterNoFill(-1,ResCol[RS],x,x+ResBoxWid,y+ResBoxHei*0.2,"%s",ResText[RS]);
-	ColPrintfCenterNoFill(-1,ResCol[RS],x,x+ResBoxWid,y+ResBoxHei*0.6,"%dms",TU);
+	ColPrintfCenterNoFill(-1,ResCol[RS],x,x+ResBoxWid,y+ResBoxHei*0.6,det);
 	return;
 }
 void DrawInfoBox(int No,int x,int y,int IF,bool Small)
@@ -466,7 +468,7 @@ NoInput:
 int GetProgramReturn(PROCESS_INFORMATION pi)
 {
 	DWORD ret;
-	WaitForSingleObject(pi.hProcess,INFINITE);
+	// WaitForSingleObject(pi.hProcess,INFINITE);
 	GetExitCodeProcess(pi.hProcess,&ret);
 	return ret;
 }
@@ -474,6 +476,7 @@ int RunProgramAndGetReturn(const char* Path,const char* FileIn,const char* FileO
 {
 	PROCESS_INFORMATION pro;
 	pro=CreateProgramProcess(Path,FileIn,FileOut);
+	WaitForSingleObject(pro.hProcess,INFINITE);
 	return GetProgramReturn(pro);
 }
 
@@ -482,7 +485,7 @@ int GetProcessMemory(HANDLE hProcess)
 {
 	PROCESS_MEMORY_COUNTERS pmc;
 	GetProcessMemoryInfo(hProcess,&pmc,sizeof(pmc));
-	return pmc.WorkingSetSize/1024;
+	return pmc.PeakWorkingSetSize/1024;
 }
 
 void WriteToClipboard(const char* text){

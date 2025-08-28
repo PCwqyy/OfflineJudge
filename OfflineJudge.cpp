@@ -19,6 +19,7 @@ bool CheckEnvironment()
 	if(ch=='Y'||ch=='y')
 		system("winget install Microsoft.WindowsTerminal");
 	else	return false;
+	return true;
 }
 void FirstTimeLaunch()
 {
@@ -37,10 +38,10 @@ void FirstTimeLaunch()
 void Init()
 {
 	ConTitleA("Offline Judge");
-	ConDefaultColor=0x0f;
 	flGlobalRecord.open("./Record/Global.rcd","r+");
 	if(flGlobalRecord.pointer==NULL)
-		FirstTimeLaunch();
+	FirstTimeLaunch();
+	ConDefaultColor=0x0f;
 	CursorSize(0);
 	freopen("./log/err.log","w+",stderr);
 	strcpy(LogFormat,"%02d:%02d:%02d[%s]%s\n");

@@ -1,0 +1,13 @@
+*.log
+*.exe
+
+Record/*
+Code/*
+Judge/*
+Test/*
+Config/*
+.vscode/*
+
+Test.*
+test.*
+ignore.*

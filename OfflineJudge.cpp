@@ -3,25 +3,7 @@
 #include"./lib/Record.hpp"
 #include"./lib/Judge.hpp"
 
-bool CheckEnvironment()
-{
-	if(isWindowsTerminal())
-		return true;
-	printf("Switching to Windows Terminal...\n");
-	char Path[256];
-	GetModuleFileNameA(NULL,Path,MAX_PATH);
-	if(systemf("wt.exe %s",Path)==0)
-		return false;
-	char ch;
-	ColorPrintf(0x04,"[Error]Windows Terminal not found!\n");
-	printf("Download Windows Terminal? (Y/N): ");
-	scanf("%c",&ch);
-	if(ch=='Y'||ch=='y')
-		system("winget install Microsoft.WindowsTerminal");
-	else	return false;
-	return true;
-}
-void FirstTimeLaunch()
+void CreateDirs()
 {
 	CreateDirectoryA("./Record/",NULL);
 	CreateDirectoryA("./Config/",NULL);
@@ -31,22 +13,59 @@ void FirstTimeLaunch()
 	CreateDirectoryA("./Judge/Out/",NULL);
 	CreateDirectoryA("./Code/",NULL);
 	CreateDirectoryA("./log/",NULL);
+}
+bool CheckEnvironment()
+{
+	ClearScreen();
+	if(DontCheckEnvironAgain)
+		return true;
+	if(isVirtualTerminal())
+		return true;
+	if(!DontSwitchToWinTerm)
+	{
+		printf("Switching to Windows Terminal...\n");
+		char Path[256];
+		GetModuleFileNameA(NULL,Path,MAX_PATH);
+		if(systemf("wt.exe %s",Path)==0)
+			return false;
+		ColorPrintf(0x04,"[Error]Windows Terminal not found!\n");
+	}
+	char ch[5];
+	printf("Try anyway? (Y/N): ");
+	scanf("%s",ch);
+	if(ch[0]=='Y'||ch[0]=='y')
+	{
+		printf("Here we go!");
+		DontCheckEnvironAgain=true;
+		SaveSettings();
+		return true;
+	}
+	printf("Download Windows Terminal? (Y/N): ");
+	scanf("%s",ch);
+	if(ch[0]=='Y'||ch[0]=='y')
+		system("winget install Microsoft.WindowsTerminal");
+	else	return false;
+	return true;
+}
+void FirstTimeLaunch()
+{
 	flGlobalRecord.open(GlobalRCD,"w+");
-	LogOut.open("./log/log.log","w+");
 	flGlobalRecord.printf("0");
+	LogOut.open("./log/log.log","w+");
+	SaveSettings();
 	return;
 }
 void Init()
 {
 	ConTitleA("Offline Judge");
-	flGlobalRecord.open(GlobalRCD,"r+");
-	if(flGlobalRecord.pointer==NULL)
-	FirstTimeLaunch();
+	if(!CheckFileExist(SettingsCFG))
+		FirstTimeLaunch();
 	ConDefaultColor=0x0f;
 	CursorSize(0);
 	freopen("./log/err.log","w+",stderr);
 	strcpy(LogFormat,"%02d:%02d:%02d[%s]%s\n");
 	LogOut.open("./log/log.log",OVERWRITE);
+	CreateDirs();
 	GetGlobalRecord();
 	ReadSettings();
 	return;
@@ -57,7 +76,7 @@ Bar barTest(2,2,20,clWhite,clGray,&loadingStatus,514,BAR_STYLE_VALUE);
 void TestScreen()
 {
 	ClearScreen();
-	ColPrintfCenter(clWhite,clViolet,0,15,0,"Test Screen");
+	ColPrintfCenter(clWhite,clBlueViolet,0,15,0,"Test Screen");
 	ColorPosPrintfEx(clGold,-1,2,4,L"Emojis available! 😊🤣👌🐧");
 	ReadSettings();
 	ColorPosPrintfEx(clDeepSkyBlue,-1,2,5,"You are %s.",you);
@@ -77,11 +96,11 @@ void TestScreen()
 	return;
 }
 
-Button btJudge(9,4,10,clWhite,clDodgerBlue,"Judge",Judge);
-Button btRecord(21,4,10,clWhite,clGold,"Record",RecordScreen);
-Button btSettings(9,6,10,clWhite,clForestGreen,"Settings",SettingScreen);
-Button btTest(21,6,10,clWhite,clViolet,"Test",TestScreen);
-Button btExit(9,8,10,clWhite,clRed,"Exit",[](){exit(0);});
+Button btJudge(10,4,13,clWhite,clDodgerBlue,"Judge",Judge);
+Button btRecord(25,4,13,clWhite,clGold,"Record",RecordScreen);
+Button btSettings(10,6,13,clWhite,clForestGreen,"Settings",SettingScreen);
+Button btTest(25,6,13,clWhite,clBlueViolet,"Test",TestScreen);
+Button btExit(10,8,13,clWhite,clRed,"Exit",[](){ClearScreen();exit(0);});
 
 void WelcomeScreen()
 {
@@ -90,7 +109,8 @@ void WelcomeScreen()
 		ClearScreen();
 		ClearButList();
 		PushButList(btJudge,btRecord,btSettings,btTest,btExit);
-		ColPrintfCenter(clWhite,-1,10,30,2,"Offline Judge");
+		ColPrintfCenter(clWhite,-1,10,40,2,"Offline Judge");
+		ColorPosPrintfEx(clGray,-1,0,12,"OJ v1.1 by %s",IIIII);
 		InitButs();
 	};
 	BasicGUI();
@@ -100,9 +120,9 @@ void WelcomeScreen()
 }
 int main()
 {
+	Init();
 	if(!CheckEnvironment())
 		return 0;
-	Init();
 	WelcomeScreen();
 	return 0;
 }

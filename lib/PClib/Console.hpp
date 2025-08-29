@@ -299,7 +299,7 @@ void ConSetFontSize(short w,short h)
 #ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
 #define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
 #endif
-bool isWindowsTerminal(){
+bool isVirtualTerminal(){
 	if (hOut==INVALID_HANDLE_VALUE)
 		return false;
 	DWORD mode;

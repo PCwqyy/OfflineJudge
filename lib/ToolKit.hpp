@@ -302,26 +302,26 @@ void ClearGetchQueue()
 
 #define INPUT_TYPE_STRING 0
 #define INPUT_TYPE_INT 1
+#define INPUT_TYPE_BOOL 2
 bool isCharInString(char c){return isgraph(c)||c==' ';}
 bool isCharInInt(char c){return isdigit(c);}
 struct InputBox
 {
-	int x,y,tagLen,boxLen,cur;
+	int x,y,tagLen,boxLen,cur,type;
 	Color fore,back,focusCol;
 	char tag[MAXLEN],val[MAXLEN];
 	bool focus;
 	bool (*isValid)(char ch);
 	InputBox(const char* Tag,int X,int Y,int TagLen,int BoxLen,Color Fore,Color Back,
 		Color focusCol,int Type=INPUT_TYPE_STRING,const char* Val="",bool AutoFocus=false):
-		x(X),y(Y),tagLen(TagLen),boxLen(BoxLen),
+		x(X),y(Y),tagLen(TagLen),boxLen(BoxLen),type(Type),
 		fore(Fore),back(Back),focusCol(focusCol),focus(AutoFocus)
 		{
 			strcpy(tag,Tag);
 			strcpy(val,Val);
-			if(Type==INPUT_TYPE_STRING)
-				isValid=isCharInString;
-			else if(Type==INPUT_TYPE_INT)
-				isValid=isCharInInt;
+			if(Type==INPUT_TYPE_STRING)	isValid=isCharInString;
+			else if(Type==INPUT_TYPE_INT)	isValid=isCharInInt;
+			else	isValid=[](char ch){return false;};
 			cur=strlen(val);
 			if(TagLen==-1)
 				tagLen=strlen(Tag);
@@ -363,6 +363,12 @@ struct InputBox
 				if(ch=='K')	cur--;
 				if(ch=='M')	cur++;
 			}
+			else if(type==INPUT_TYPE_BOOL&&(ch=='\n'||ch=='\r'))
+			{
+				if(strcmp(val,"TRUE")==0)
+					strcpy(val,"FALSE"),cur=5;
+				else strcpy(val,"TRUE"),cur=4;
+			}
 			cur=min(max(cur,0),(int)strlen(val));
 			Print(true);
 			CursorGoto(x+tagLen+cur,y);
@@ -374,6 +380,7 @@ struct InputBox
 		sscanf(val,"%d",&ret);
 		return ret;
 	}
+	bool GetBool(){return strcmp(val,"TRUE")==0;}
 };
 vector<InputBox> InputBoxList;
 int SelectInput=-1;
@@ -578,6 +585,14 @@ struct FileOp
 	int SetCursorPos(long long x)
 		{return fsetpos(pointer,&x);}
 };
+
+bool CheckFileExist(const char* path)
+{
+	FILE* f=fopen(path,"r");
+	if(f==NULL) return false;
+	fclose(f);
+	return true;
+}
 
 PROCESS_INFORMATION CreateProgramProcess
 (const char* Path,const char* FileIn,const char* FileOut)

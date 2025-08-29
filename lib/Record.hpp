@@ -1,6 +1,7 @@
 #pragma once
 
 #include"ToolKit.hpp"
+#include"Settings.hpp"
 
 int GlobalRecordCnt=0,JudgeCnt=10;
 FileOp flGlobalRecord;
@@ -8,6 +9,9 @@ FileOp flRecord;
 
 void GetGlobalRecord()
 {
+	if(flGlobalRecord.pointer==NULL)
+		flGlobalRecord.open(GlobalRCD,"w+");
+		flGlobalRecord.printf("0");
 	flGlobalRecord.SetCursorPos(0);
 	flGlobalRecord.scanf("%d",&GlobalRecordCnt);
 	return;

@@ -17,20 +17,20 @@ bool MLEMark=false;
 int StartT,EndT,MaxMemory;
 int RetData,RetStd,RetMine;
 
-mutex lkCheck;
-bool ThisFinish=false;
+mutex lkCheckThisFinish,lkCheckAllFinish,lkPause;
+bool ThisFinish=false,AllFinish=false,JudgePaused=false;
 void MemoryMonitor(HANDLE hProcess)
 {
 	int MemoNow;
 	while(true)
 	{
-		lkCheck.lock();
+		lkCheckThisFinish.lock();
 		if(ThisFinish)
 		{
-			lkCheck.unlock();
+			lkCheckThisFinish.unlock();
 			return;
 		}
-		lkCheck.unlock();
+		lkCheckThisFinish.unlock();
 		MemoNow=GetProcessMemory(hProcess);
 		MaxMemory=max(MaxMemory,MemoNow);
 		if(MemoNow>LimitMemory)
@@ -41,6 +41,30 @@ void MemoryMonitor(HANDLE hProcess)
 			return;
 		}
 	}
+	return;
+}
+void JudgePauseChecker()
+{
+	ColorPosPrintfEx(clDeepSkyBlue,-1,80,1," Running ");
+	while(true)
+	{
+		if(KeyDown(VK_SPACE)&&CooldownFormLastCall())
+		{
+			if(JudgePaused)
+				lkPause.unlock(),
+				JudgePaused=false;
+			else
+				lkPause.lock(),
+				JudgePaused=true;
+			ColorPosPrintfEx(JudgePaused?clOrange:clDeepSkyBlue,-1,
+				80,1," %s ",JudgePaused?"Paused":"Running");
+			printf(" ");
+		}
+		lkCheckAllFinish.lock();
+		if(AllFinish)	break;
+		lkCheckAllFinish.unlock();
+	}
+	lkCheckAllFinish.unlock();
 	return;
 }
 
@@ -163,9 +187,9 @@ void RunPrograms(int i)
 	TerminateProcess(MineProcess.hProcess,0);
 	RetMine=GetProgramReturn(MineProcess);
 	/*Wait Killer*/
-	lkCheck.lock();
+	lkCheckThisFinish.lock();
 	ThisFinish=true;
-	lkCheck.unlock();
+	lkCheckThisFinish.unlock();
 	ptMemo.join();
 	return;
 }
@@ -188,8 +212,7 @@ void ShowProgress(int i)
 		case RS_RE:		ctRE++;		break;
 		case RS_UKE:	ctUKE++;	break;
 	}
-	ColorPosPrintfEx(clWhite,-1,80,1,"[Statistics]",i+1);
-	ColorPosPrintfEx(clWhite,-1,80,2,"Finish %d",i+1);
+	ColorPosPrintfEx(clWhite,-1,80,2,"[Statistics]",i+1);
 	ColorPosPrintfEx(ResCol[RS_AC],-1,80,3,"AC %d",ctAC);
 	ColorPosPrintfEx(ResCol[RS_WA],-1,80,4,"WA %d",ctWA);
 	ColorPosPrintfEx(ResCol[RS_RE],-1,80,5,"RE %d",ctRE);
@@ -278,8 +301,9 @@ void Judge()
 	flRecord.open(RecordRCD,"w+",GlobalRecordCnt);
 	if(!JInput())	return;
 	TerminatePrograms();
-	if(!CompilePrograms())
-		goto End;
+	AllFinish=false;
+	thread ptPause;
+	if(!CompilePrograms())	goto End;
 	flRecord.printf("$TOTAL %d\n",JudgeCnt);
 	/*print GUI*/
 	barJudge.maxv=JudgeCnt-1;
@@ -293,15 +317,22 @@ void Judge()
 	ColorPosPrintfEx(clWhite,-1,2,3,"Memo limits: %.2lfmB +%.2lfmB",LimitMemory/1024.0,MercyMemory/1024.0);
 	for(int i=0;i<JudgeCnt;i++)
 		SetInfo(i,IF_WAIT);
+	ptPause=thread(JudgePauseChecker);
 	/*main loop*/
 	for(int i=0;i<JudgeCnt;i++)
 	{
+		lkPause.lock();
+		lkPause.unlock();
 		JudgeIdNow=i;
 		RunPrograms(i);
 		Resulting(i);
 		ShowProgress(i);
 		RunBars();
 	}
+	lkCheckAllFinish.lock();
+	AllFinish=true;
+	lkCheckAllFinish.unlock();
+	ptPause.join();
 	LogOut.lprintf("Info","R%d AC %d",GlobalRecordCnt,ctAC);
 End:
 	while(!KeyDown(VK_ESCAPE))

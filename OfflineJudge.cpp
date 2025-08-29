@@ -58,6 +58,7 @@ void FirstTimeLaunch()
 void Init()
 {
 	ConTitleA("Offline Judge");
+	CreateDirs();
 	if(!CheckFileExist(SettingsCFG))
 		FirstTimeLaunch();
 	ConDefaultColor=0x0f;
@@ -65,7 +66,6 @@ void Init()
 	freopen("./log/err.log","w+",stderr);
 	strcpy(LogFormat,"%02d:%02d:%02d[%s]%s\n");
 	LogOut.open("./log/log.log",OVERWRITE);
-	CreateDirs();
 	GetGlobalRecord();
 	ReadSettings();
 	return;
